@@ -1,0 +1,23 @@
+<!doctype html>
+<link
+rel="stylesheet"
+href="{{ url_for('static', filename='css/chessboard-1.0.0.min.css')}}"
+/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="{{ url_for('static', filename='js/chessboard-1.0.0.min.js')}}"></script>
+
+<html>
+<title>Hello from Flask</title>
+<body>
+<h1>Hello, World!</h1>
+<div id="myBoard" style="width: 400px"></div>
+</body>
+</html>
+<script>
+var config = {
+  draggable: true,
+  dropOffBoard: 'snapback', // this is the default
+  position: 'start'
+}
+var board = Chessboard('myBoard', config)
+</script>

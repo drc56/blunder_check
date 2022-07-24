@@ -1,24 +1,26 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
+import logging
 import json
 
 from chess import Board
 from chess.pgn import GameNode
-from flask import Flask
+from flask import Flask, render_template
 from flask_restful import Resource, Api
 import lichess.api
 from lichess.format import PYCHESS
 from stockfish import Stockfish
 
 # Constant parameters.
-BLUNDER_THRESHOLD = 150
+BLUNDER_THRESHOLD = 200
 DEBUG = 1
 MATE_CP_VALUE = 10000
 PORT_NUMBER = 8000
 STOCKFISH_PATH = "/bc/Stockfish-sf_15/src/stockfish"
-STOCKFISH_THREADS = 2
+STOCKFISH_THREADS = 4
 STOCKFISH_DEPTH = 17
 
+app = Flask(__name__)
 
 class GetPuzzles(Resource):
     """GetPuzzles api call to get user games and generate puzzles."""
@@ -45,7 +47,7 @@ class GetPuzzles(Resource):
             list: list of puzzles and solutions.
         """
         if DEBUG:
-            print(f'Getting puzzles for {username}')
+            app.logger.debug(f'Getting puzzles for {username}')
         full_puzzle_list = []
         games = lichess.api.user_games(username, max=1, format=PYCHESS)
 
@@ -114,14 +116,12 @@ class GetPuzzles(Resource):
                     cur_eval = MATE_CP_VALUE
 
             # Check if it's the player's turn
-            if white_turn and is_white:
+            if (white_turn and is_white) or (not white_turn and not is_white):
                 if abs(last_eval - cur_eval) >= BLUNDER_THRESHOLD:
                     bd = Board(fen=last_position)
                     if DEBUG:
                         player = "White" if bd.turn else "Black"
-                        print(f"Blunder found on {bd.fullmove_number} position is: ")
-                        print(f"Player to Move is {player}")
-                        print(bd)
+                        app.logger.debug(f"Blunder found on {bd.fullmove_number} position is \n Player to Move is {player} \n{bd}")
                     puzzle_list.append(
                         {"position": last_position, "solution": best_move}
                     )
@@ -133,9 +133,14 @@ class GetPuzzles(Resource):
 
         return puzzle_list
 
+@app.route('/')
+def index():
+    return render_template('index.html')
+
 
 if __name__ == "__main__":
-    app = Flask(__name__)
     api = Api(app)
     api.add_resource(GetPuzzles, "/get_puzzles/<string:username>")
+    if DEBUG:
+        app.logger.setLevel(logging.DEBUG)
     app.run(host='0.0.0.0', port=PORT_NUMBER, debug=True)
